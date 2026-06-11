@@ -1,6 +1,5 @@
 import imageCompression from 'browser-image-compression';
 import type { ImageCompressionOptions } from './types';
-import { optimizeAnimatedGif } from './gif-optimizer';
 
 export interface ImageOptimizationResult {
   optimizedBlob: Blob;
@@ -113,6 +112,23 @@ function canvasToBlob(
 }
 
 // ---------------------------------------------------------------------------
+// AVIF encoder (lazy-loaded WASM, @jsquash/avif)
+//
+// The browser's canvas can't reliably encode AVIF outside Chromium, so we use
+// the same libavif-via-WASM encoder Squoosh uses. The module (and its WASM
+// binary) is imported dynamically, so it only downloads when a user actually
+// asks for AVIF output — the initial bundle stays free of it.
+// ---------------------------------------------------------------------------
+
+async function encodeAvif(imageData: ImageData, quality01: number): Promise<Blob> {
+  // Import the encode-only entry so the AVIF *decoder* WASM isn't bundled too.
+  const { default: encode } = await import('@jsquash/avif/encode');
+  const quality = Math.round(Math.min(1, Math.max(0, quality01)) * 100);
+  const buffer = await encode(imageData, { quality });
+  return new Blob([buffer], { type: 'image/avif' });
+}
+
+// ---------------------------------------------------------------------------
 // Canvas-based compressor
 //
 // Image loading chain (most → least reliable in published CDN / Safari):
@@ -122,6 +138,9 @@ function canvasToBlob(
 //
 //   B. FileReader → data URL → <img>
 //      For browsers that don't support createImageBitmap (Safari < 15).
+//
+// Once a canvas is ready, finalize() encodes it: AVIF goes through the WASM
+// encoder, everything else through the canvas toDataURL/toBlob path.
 // ---------------------------------------------------------------------------
 
 async function canvasCompress(
@@ -129,9 +148,10 @@ async function canvasCompress(
   options: ImageCompressionOptions
 ): Promise<Blob> {
   const isJpeg  = file.type === 'image/jpeg' || /\.jpe?g$/i.test(file.name);
-  const outputType = options.convertToWebP ? 'image/webp'
-                   : isJpeg                ? 'image/jpeg'
-                                           : 'image/png';
+  const fmt = options.outputFormat;
+  const outputType = fmt === 'webp' ? 'image/webp'
+                   : isJpeg         ? 'image/jpeg'
+                                    : 'image/png';
   const quality = (outputType === 'image/jpeg' || outputType === 'image/webp')
     ? options.quality
     : undefined;
@@ -147,8 +167,19 @@ async function canvasCompress(
     return { width: w, height: h };
   };
 
-  const encodeCanvas = (canvas: HTMLCanvasElement) =>
-    canvasToBlob(canvas, outputType, quality, file);
+  const finalize = async (canvas: HTMLCanvasElement): Promise<Blob> => {
+    if (fmt === 'avif') {
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return file;
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      try {
+        return await encodeAvif(imageData, options.quality);
+      } catch {
+        return file;
+      }
+    }
+    return canvasToBlob(canvas, outputType, quality, file);
+  };
 
   // ── Path A: createImageBitmap ──────────────────────────────────────────
   try {
@@ -160,7 +191,7 @@ async function canvasCompress(
     if (!ctx) { bmp.close(); throw new Error('no ctx'); }
     ctx.drawImage(bmp, 0, 0, width, height);
     bmp.close();
-    return encodeCanvas(canvas);
+    return finalize(canvas);
   } catch { /* fall through */ }
 
   // ── Path B: FileReader → data URL → <img> ────────────────────────────
@@ -178,7 +209,7 @@ async function canvasCompress(
     const ctx = canvas.getContext('2d');
     if (!ctx) return file;
     ctx.drawImage(img, 0, 0, width, height);
-    return encodeCanvas(canvas);
+    return finalize(canvas);
   } catch {
     return file;
   }
@@ -228,11 +259,14 @@ export async function optimizeImage(
   const isGif  = file.type === 'image/gif'  || file.name.toLowerCase().endsWith('.gif');
   const isJpeg = file.type === 'image/jpeg' || /\.jpe?g$/i.test(file.name);
 
-  // ── Animated GIF ────────────────────────────────────────────────────────
-  if (isGif && !options.convertToWebP) {
+  // ── Animated GIF (kept animated only when not converting format) ─────────
+  if (isGif && options.outputFormat === 'original') {
     const animated = await isAnimatedGif(file);
     if (animated) {
       try {
+        // Lazy-load the GIF re-encoder (gifenc + gifuct-js) — only pulled in
+        // when an animated GIF is actually processed.
+        const { optimizeAnimatedGif } = await import('./gif-optimizer');
         const g = await optimizeAnimatedGif(file, {
           quality: options.quality, maxWidthOrHeight: options.maxWidthOrHeight,
         });
@@ -252,53 +286,50 @@ export async function optimizeImage(
     }
   }
 
-  // ── Step 1: browser-image-compression (best compression where it works) ─
-  //
-  // useWebWorker: false — prevents worker blob-URL failures in CDN builds.
-  // Accept BIC result if it produces ANY saving over the original.
-  // If it fails or returns the same/larger file, fall through to canvas.
-
   let optimizedBlob: Blob | null = null;
 
-  try {
-    const bicOpts: Parameters<typeof imageCompression>[1] = {
-      maxSizeMB:           Math.max(0.05, (originalSize / (1024 * 1024)) * options.quality),
-      useWebWorker:        false,
-      initialQuality:      options.quality,
-      preserveExif:        options.preserveExif,
-      alwaysKeepResolution: options.maxWidthOrHeight === 0,
-      ...(options.maxWidthOrHeight > 0 && { maxWidthOrHeight: options.maxWidthOrHeight }),
-      ...(options.convertToWebP && { fileType: 'image/webp' as const }),
-      ...(!options.convertToWebP && isJpeg && { fileType: 'image/jpeg' as const }),
-      ...(!options.convertToWebP && isGif  && { fileType: 'image/png'  as const }),
-    };
-    const compressed = await imageCompression(file, bicOpts);
-    // Accept any genuine improvement — even 1 byte saved is real compression.
-    if (compressed.size < originalSize) {
-      optimizedBlob = compressed;
-    }
-  } catch { /* BIC failed — fall through */ }
-
-  // ── Step 2: canvas fallback (createImageBitmap + toDataURL) ─────────────
+  // ── Step 1: browser-image-compression (best compression where it works) ─
   //
-  // toDataURL is used instead of toBlob because Safari's toBlob quality
-  // parameter was unreliable / ignored in versions before Safari 17,
-  // causing it to output full-quality (larger) JPEGs. toDataURL has
-  // had reliable quality support in Safari for much longer.
+  // Skipped for AVIF — BIC can't emit AVIF, so those go straight to the
+  // canvas + WASM path below. useWebWorker: false prevents worker blob-URL
+  // failures in CDN builds. Accept the BIC result if it beats the original.
+
+  if (options.outputFormat !== 'avif') {
+    try {
+      const bicOpts: Parameters<typeof imageCompression>[1] = {
+        maxSizeMB:           Math.max(0.05, (originalSize / (1024 * 1024)) * options.quality),
+        useWebWorker:        false,
+        initialQuality:      options.quality,
+        preserveExif:        options.preserveExif,
+        alwaysKeepResolution: options.maxWidthOrHeight === 0,
+        ...(options.maxWidthOrHeight > 0 && { maxWidthOrHeight: options.maxWidthOrHeight }),
+        ...(options.outputFormat === 'webp' && { fileType: 'image/webp' as const }),
+        ...(options.outputFormat === 'original' && isJpeg && { fileType: 'image/jpeg' as const }),
+        ...(options.outputFormat === 'original' && isGif  && { fileType: 'image/png'  as const }),
+      };
+      const compressed = await imageCompression(file, bicOpts);
+      // Accept any genuine improvement — even 1 byte saved is real compression.
+      if (compressed.size < originalSize) {
+        optimizedBlob = compressed;
+      }
+    } catch { /* BIC failed — fall through */ }
+  }
+
+  // ── Step 2: canvas fallback (also the AVIF path) ────────────────────────
   //
   // createImageBitmap reads bytes directly — no URL, no img-src CSP issues —
-  // so this path works in every published CDN environment.
+  // so this path works in every published CDN environment. AVIF is encoded
+  // here via the lazy WASM module.
 
   if (!optimizedBlob) {
     optimizedBlob = await canvasCompress(file, options);
 
-    // If the canvas at the requested quality didn't beat the original,
-    // cascade through progressively lower quality levels. This is necessary
-    // in Safari when the source image's encoding efficiency is close to or
-    // better than the browser's built-in JPEG encoder at the target quality.
+    // If a canvas JPEG at the requested quality didn't beat the original,
+    // cascade through progressively lower quality levels. Needed in Safari
+    // when the source's encoding efficiency rivals the browser's encoder.
     if (
       isJpeg &&
-      !options.convertToWebP &&
+      options.outputFormat === 'original' &&
       options.maxWidthOrHeight === 0 &&
       optimizedBlob.size >= originalSize
     ) {
@@ -321,10 +352,11 @@ export async function optimizeImage(
     }
   }
 
-  // Never return a larger file (unless intentionally changing format or size).
+  // Never return a larger file when we're keeping the original format and size.
+  // (Format conversions to WebP/AVIF and explicit resizes are allowed to differ.)
   if (
     optimizedBlob.size >= originalSize &&
-    !options.convertToWebP &&
+    options.outputFormat === 'original' &&
     options.maxWidthOrHeight === 0
   ) {
     optimizedBlob = file;

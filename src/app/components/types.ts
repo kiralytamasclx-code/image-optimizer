@@ -1,17 +1,19 @@
 export type FileType = 'svg' | 'png' | 'gif' | 'jpg';
 
+export type OutputFormat = 'original' | 'webp' | 'avif';
+
 export interface ImageCompressionOptions {
   quality: number;       // 0-1 for PNG/GIF
   maxWidthOrHeight: number; // max dimension in px, 0 = no resize
   preserveExif: boolean;
-  convertToWebP: boolean;
+  outputFormat: OutputFormat;
 }
 
 export const DEFAULT_OPTIONS: ImageCompressionOptions = {
   quality: 0.8,
   maxWidthOrHeight: 0,
   preserveExif: false,
-  convertToWebP: false,
+  outputFormat: 'original',
 };
 
 export interface ProcessedFile {
@@ -55,5 +57,19 @@ export function getFileTypeBadgeColor(type: FileType): string {
     case 'png': return 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300';
     case 'gif': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300';
     case 'jpg': return 'bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-300';
+  }
+}
+
+// Download extension based on the optimized blob's actual MIME type.
+// Handles format conversions (WebP/AVIF) and the static-GIF -> PNG case,
+// falling back to the original file type when the MIME is unknown.
+export function outputExtension(blob: Blob | undefined, fallback: FileType): string {
+  switch (blob?.type) {
+    case 'image/avif': return 'avif';
+    case 'image/webp': return 'webp';
+    case 'image/jpeg': return 'jpg';
+    case 'image/png': return 'png';
+    case 'image/gif': return 'gif';
+    default: return fallback;
   }
 }

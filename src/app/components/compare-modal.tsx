@@ -609,14 +609,26 @@ export function CompareModal({
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox" checked={options.convertToWebP}
-                  onChange={(e) => setOptions((o) => ({ ...o, convertToWebP: e.target.checked }))}
-                  className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
-                />
-                <span className="text-foreground" style={{ fontSize: '0.8125rem' }}>WebP</span>
-              </label>
+              <div className="flex items-center gap-1.5">
+                {([
+                  ['original', 'Original'],
+                  ['webp', 'WebP'],
+                  ['avif', 'AVIF'],
+                ] as const).map(([fmt, label]) => (
+                  <button
+                    key={fmt}
+                    onClick={() => setOptions((o) => ({ ...o, outputFormat: fmt }))}
+                    className={`rounded-md px-2 py-1 transition-colors ${
+                      options.outputFormat === fmt
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                    }`}
+                    style={{ fontSize: '0.75rem' }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox" checked={options.preserveExif}

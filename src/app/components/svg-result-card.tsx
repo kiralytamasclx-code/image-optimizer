@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, Suspense, lazy } from 'react';
 import {
   Download,
   Copy,
@@ -14,8 +14,10 @@ import {
 } from 'iconoir-react';
 import { OptimizationResult, formatBytes } from './svg-optimizer';
 import { getFileTypeLabel, getFileTypeBadgeColor } from './types';
-import { CompareModal } from './compare-modal';
 import { SavingsBadge, PressableButton } from './animated';
+
+// Compare modal is heavy (image diff slider); load it only when first opened.
+const CompareModal = lazy(() => import('./compare-modal').then((m) => ({ default: m.CompareModal })));
 
 interface SVGResultCardProps {
   name: string;
@@ -28,6 +30,11 @@ export function SVGResultCard({ name, result, onRemove }: SVGResultCardProps) {
   const [showCode, setShowCode] = useState(false);
   const [activeView, setActiveView] = useState<'preview' | 'original' | 'optimized'>('preview');
   const [compareOpen, setCompareOpen] = useState(false);
+  const [compareLoaded, setCompareLoaded] = useState(false);
+  const openCompare = () => {
+    setCompareLoaded(true);
+    setCompareOpen(true);
+  };
 
   const originalBlobUrl = useMemo(() => {
     const blob = new Blob([result.original], { type: 'image/svg+xml' });
@@ -88,7 +95,7 @@ export function SVGResultCard({ name, result, onRemove }: SVGResultCardProps) {
 
           <div className="flex items-center gap-1">
             <PressableButton
-              onClick={() => setCompareOpen(true)}
+              onClick={openCompare}
               className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
               style={{ fontSize: '0.8125rem' }}
             >
@@ -237,18 +244,22 @@ export function SVGResultCard({ name, result, onRemove }: SVGResultCardProps) {
         </div>
       </div>
 
-      {/* Compare Modal */}
-      <CompareModal
-        open={compareOpen}
-        onClose={() => setCompareOpen(false)}
-        name={name}
-        fileType="svg"
-        originalUrl={originalBlobUrl}
-        optimizedUrl={optimizedBlobUrl}
-        originalSize={result.originalSize}
-        optimizedSize={result.optimizedSize}
-        savingsPercent={result.savingsPercent}
-      />
+      {/* Compare Modal — lazy-loaded on first open */}
+      {compareLoaded && (
+        <Suspense fallback={null}>
+          <CompareModal
+            open={compareOpen}
+            onClose={() => setCompareOpen(false)}
+            name={name}
+            fileType="svg"
+            originalUrl={originalBlobUrl}
+            optimizedUrl={optimizedBlobUrl}
+            originalSize={result.originalSize}
+            optimizedSize={result.optimizedSize}
+            savingsPercent={result.savingsPercent}
+          />
+        </Suspense>
+      )}
     </>
   );
 }

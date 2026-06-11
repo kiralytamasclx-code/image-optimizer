@@ -18,10 +18,19 @@ Drop in one file or a few dozen. The app picks the right optimizer for each file
 A few other things worth knowing:
 
 - Add files by dragging them in, clicking to browse, or pasting from the clipboard (Ctrl/Cmd+V). SVG can also be pasted as raw code.
-- Any raster image can be converted to WebP instead of keeping its original format.
+- Any raster image can be converted to WebP or AVIF instead of keeping its original format.
 - It processes files in parallel and shows running totals: file count by type, original size, optimized size, and how much you saved.
 - It won't hand back a file that came out larger than the original, unless you asked it to change the format or the dimensions.
 - Light and dark themes, remembered between visits.
+
+## How it works
+
+Everything runs on the client. There is no server round-trip; the same code that ships to the browser does the optimizing.
+
+- **SVG** is parsed into a DOM and cleaned conservatively. It strips comments, XML and doctype declarations, metadata, and editor namespaces (Inkscape, Sodipodi, RDF), drops `display:none` layers, and removes empty groups. It deliberately does not round path coordinates, and never removes anything referenced by `id` or living inside `<defs>`, so the rendered result matches the input.
+- **JPG and PNG** go through `browser-image-compression` first, with a Canvas fallback (`createImageBitmap` plus `toDataURL`) for the cases that need it, including a quality cascade for older Safari. The tool won't hand back a file larger than the original unless you changed the format or the dimensions.
+- **AVIF** is encoded with libavif compiled to WebAssembly (the same encoder Squoosh uses). The encoder and its WASM load on demand the first time you choose AVIF, so they never weigh down the initial page load.
+- **Animated GIF** is decoded frame by frame, optionally resized, then re-encoded with a reduced palette. That code is split into its own chunk and only fetched when you drop a GIF.
 
 ## Privacy
 
@@ -33,7 +42,7 @@ There is no backend. Images are read, compressed, and downloaded entirely on the
 - Vite 6
 - Tailwind CSS v4
 - Motion for animations, Iconoir for icons
-- `browser-image-compression`, `gifenc`, and `gifuct-js` for encoding; `jszip` for the bulk download
+- `browser-image-compression` and `@jsquash/avif` (WASM) for raster encoding, `gifenc` + `gifuct-js` for animated GIFs, `jszip` for the bulk download
 
 ## Getting started
 

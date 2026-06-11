@@ -39,6 +39,15 @@ export function DropZone({ onFilesDropped, hasFiles = false }: DropZoneProps) {
     [onFilesDropped]
   );
 
+  const openFilePicker = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.svg,.png,.gif,.jpg,.jpeg,image/svg+xml,image/png,image/gif,image/jpeg';
+    input.multiple = true;
+    input.onchange = () => handleFiles(input.files);
+    input.click();
+  }, [handleFiles]);
+
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
@@ -141,6 +150,7 @@ export function DropZone({ onFilesDropped, hasFiles = false }: DropZoneProps) {
         className={`
           relative flex rounded-2xl border-2 border-dashed cursor-pointer
           transition-all duration-200
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background
           ${
             pasteFlash
               ? 'border-green-500 bg-green-500/5 scale-[1.01]'
@@ -150,13 +160,15 @@ export function DropZone({ onFilesDropped, hasFiles = false }: DropZoneProps) {
           }
           ${hasFiles ? 'flex-row items-center gap-4 p-4' : 'flex-col items-center justify-center gap-4 p-12'}
         `}
-        onClick={() => {
-          const input = document.createElement('input');
-          input.type = 'file';
-          input.accept = '.svg,.png,.gif,.jpg,.jpeg,image/svg+xml,image/png,image/gif,image/jpeg';
-          input.multiple = true;
-          input.onchange = () => handleFiles(input.files);
-          input.click();
+        onClick={openFilePicker}
+        role="button"
+        tabIndex={0}
+        aria-label="Upload images. Drop files here, or press Enter to browse. SVG, PNG, GIF, and JPG are supported."
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openFilePicker();
+          }
         }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
       >

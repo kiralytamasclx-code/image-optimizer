@@ -116,26 +116,32 @@ export function CompressionSettings({ options, onChange }: CompressionSettingsPr
               className="text-foreground block"
               style={{ fontSize: '0.8125rem', fontWeight: 500 }}
             >
-              Options
+              Output format
             </label>
-            <label className="flex items-center gap-2.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={options.convertToWebP}
-                onChange={(e) => update({ convertToWebP: e.target.checked })}
-                className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
-              />
-              <span className="text-foreground" style={{ fontSize: '0.8125rem' }}>
-                Convert to WebP
-              </span>
-              <span
-                className="text-muted-foreground"
-                style={{ fontSize: '0.6875rem' }}
-              >
-                (smaller files)
-              </span>
-            </label>
-            <label className="flex items-center gap-2.5 cursor-pointer">
+            <div className="flex flex-wrap gap-1.5">
+              {([
+                ['original', 'Original'],
+                ['webp', 'WebP'],
+                ['avif', 'AVIF'],
+              ] as const).map(([fmt, label]) => (
+                <button
+                  key={fmt}
+                  onClick={() => update({ outputFormat: fmt })}
+                  className={`rounded-md px-2.5 py-1 transition-colors ${
+                    options.outputFormat === fmt
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+                  style={{ fontSize: '0.75rem' }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="text-muted-foreground" style={{ fontSize: '0.6875rem' }}>
+              WebP and AVIF are smaller than PNG/JPG. AVIF is smallest, encoded right in your browser.
+            </p>
+            <label className="flex items-center gap-2.5 cursor-pointer mt-1">
               <input
                 type="checkbox"
                 checked={options.preserveExif}

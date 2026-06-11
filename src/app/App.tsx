@@ -8,6 +8,7 @@ import {
   RefreshDouble,
   SunLight,
   HalfMoon,
+  Lock,
 } from 'iconoir-react';
 import { motion, AnimatePresence } from 'motion/react';
 import JSZip from 'jszip';
@@ -18,7 +19,7 @@ import { CompressionSettings } from './components/compression-settings';
 import { optimizeSVG, formatBytes } from './components/svg-optimizer';
 import { optimizeImage } from './components/image-optimizer';
 import type { ProcessedFile, ImageCompressionOptions } from './components/types';
-import { getFileType, DEFAULT_OPTIONS } from './components/types';
+import { getFileType, DEFAULT_OPTIONS, outputExtension } from './components/types';
 import { CountUp, StaggeredStatCard, ResultCardWrapper, SavingsBadge, PressableButton } from './components/animated';
 import { Footer } from './components/footer';
 
@@ -187,8 +188,8 @@ export default function App() {
           const optimizedName = file.name.replace(/\.svg$/i, '.optimized.svg');
           zip.file(optimizedName, file.svgResult.optimized);
         } else if (file.optimizedBlob) {
-          const ext = (file.type === 'gif' && file.animatedGif) ? '.gif' : file.type === 'gif' ? '.png' : file.type === 'jpg' ? '.jpg' : `.${file.type}`;
-          const optimizedName = file.name.replace(/\.[^.]+$/, '') + `.optimized${ext}`;
+          const ext = outputExtension(file.optimizedBlob, file.type);
+          const optimizedName = file.name.replace(/\.[^.]+$/, '') + `.optimized.${ext}`;
           zip.file(optimizedName, file.optimizedBlob);
         }
       }
@@ -203,6 +204,26 @@ export default function App() {
       setZipping(false);
     }
   }, [files]);
+
+  const loadSamples = useCallback(async () => {
+    const specs = [
+      { url: 'samples/sample-illustration.svg', name: 'sample-illustration.svg', type: 'image/svg+xml' },
+      { url: 'samples/sample-photo.png', name: 'sample-photo.png', type: 'image/png' },
+    ];
+    try {
+      const sampleFiles = await Promise.all(
+        specs.map(async (s) => {
+          const res = await fetch(`${import.meta.env.BASE_URL}${s.url}`);
+          if (!res.ok) throw new Error(`Failed to load ${s.url}`);
+          const blob = await res.blob();
+          return new File([blob], s.name, { type: s.type });
+        })
+      );
+      handleFilesDropped(sampleFiles);
+    } catch {
+      /* sample assets unavailable — ignore */
+    }
+  }, [handleFilesDropped]);
 
   const doneFiles = files.filter((f) => f.status === 'done');
   const totalOriginal = doneFiles.reduce((sum, f) => sum + (f.originalSize || 0), 0);
@@ -307,8 +328,33 @@ export default function App() {
       </header>
 
       <main className="mx-auto max-w-5xl px-6 py-8">
+        {/* Privacy reassurance */}
+        <div className="flex justify-center mb-6">
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-muted-foreground"
+            style={{ fontSize: '0.75rem' }}
+          >
+            <Lock className="h-3 w-3" />
+            100% private. Your files never leave your browser.
+          </span>
+        </div>
+
         {/* Drop Zone */}
         <DropZone onFilesDropped={handleFilesDropped} hasFiles={files.length > 0} />
+
+        {/* First-run nudge: try the tool instantly with bundled samples */}
+        {files.length === 0 && (
+          <div className="mt-4 flex justify-center">
+            <PressableButton
+              onClick={loadSamples}
+              className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-foreground hover:bg-muted transition-colors"
+              style={{ fontSize: '0.875rem' }}
+            >
+              <Sparks className="h-4 w-4 text-primary" />
+              Try it with a sample
+            </PressableButton>
+          </div>
+        )}
 
         {/* Compression Settings — show when there are image files or always for discoverability */}
         <div className="mt-6">

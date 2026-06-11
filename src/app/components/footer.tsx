@@ -20,22 +20,41 @@ function LinkedInIcon() {
 
 interface FooterProps {
   name?: string;
+  portfolioUrl?: string;
   linkedInUrl?: string;
   linkedInLabel?: string;
 }
 
 export function Footer({
   name = 'Tommy K.',
+  portfolioUrl = 'https://tamaskiraly.com',
   linkedInUrl = 'https://www.linkedin.com/in/kiralytamas/',
-  linkedInLabel = 'LinkedIn profile',
+  linkedInLabel = 'LinkedIn',
 }: FooterProps) {
   return (
     <footer className="border-t border-border py-6 mt-12">
       <div
-        className="mx-auto max-w-5xl px-6 flex items-center justify-center gap-1.5 text-muted-foreground"
+        className="mx-auto max-w-5xl px-6 flex flex-wrap items-center justify-center gap-1.5 text-muted-foreground"
         style={{ fontSize: '0.8125rem' }}
       >
-        <span>Made with ❤️ by {name}</span>
+        <span>Made with ❤️ by</span>
+        <a
+          href={portfolioUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-foreground hover:text-primary transition-colors"
+        >
+          {name}
+        </a>
+        <span className="mx-1">·</span>
+        <a
+          href={portfolioUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-foreground hover:text-primary transition-colors"
+        >
+          Portfolio
+        </a>
         <span className="mx-1">·</span>
         <a
           href={linkedInUrl}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import {
   Download,
   Trash as Trash2,
@@ -8,9 +8,11 @@ import {
 } from 'iconoir-react';
 import { formatBytes } from './svg-optimizer';
 import type { ProcessedFile, ImageCompressionOptions } from './types';
-import { getFileTypeLabel, getFileTypeBadgeColor } from './types';
-import { CompareModal } from './compare-modal';
+import { getFileTypeLabel, getFileTypeBadgeColor, outputExtension } from './types';
 import { SavingsBadge, PressableButton } from './animated';
+
+// Compare modal is heavy (image diff slider); load it only when first opened.
+const CompareModal = lazy(() => import('./compare-modal').then((m) => ({ default: m.CompareModal })));
 
 interface ImageResultCardProps {
   file: ProcessedFile;
@@ -20,13 +22,18 @@ interface ImageResultCardProps {
 
 export function ImageResultCard({ file, onRemove, onUpdate }: ImageResultCardProps) {
   const [compareOpen, setCompareOpen] = useState(false);
+  const [compareLoaded, setCompareLoaded] = useState(false);
+  const openCompare = () => {
+    setCompareLoaded(true);
+    setCompareOpen(true);
+  };
 
   const handleDownload = () => {
     if (!file.optimizedUrl) return;
     const a = document.createElement('a');
     a.href = file.optimizedUrl;
-    const ext = (file.type === 'gif' && file.animatedGif) ? '.gif' : file.type === 'gif' ? '.png' : file.type === 'jpg' ? '.jpg' : `.${file.type}`;
-    a.download = file.name.replace(/\.[^.]+$/, '') + `.optimized${ext}`;
+    const ext = outputExtension(file.optimizedBlob, file.type);
+    a.download = file.name.replace(/\.[^.]+$/, '') + `.optimized.${ext}`;
     a.click();
   };
 
@@ -73,7 +80,7 @@ export function ImageResultCard({ file, onRemove, onUpdate }: ImageResultCardPro
 
           <div className="flex items-center gap-1">
             <PressableButton
-              onClick={() => setCompareOpen(true)}
+              onClick={openCompare}
               className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
               style={{ fontSize: '0.8125rem' }}
             >
@@ -151,7 +158,7 @@ export function ImageResultCard({ file, onRemove, onUpdate }: ImageResultCardPro
                 Original
               </p>
               <div
-                onClick={() => setCompareOpen(true)}
+                onClick={openCompare}
                 className="group/preview relative flex items-center justify-center rounded-lg border border-border bg-white dark:bg-neutral-900 p-4 cursor-pointer transition-all hover:border-primary/40 hover:shadow-md"
                 style={{ minHeight: 160, ...checkerBg }}
               >
@@ -187,7 +194,7 @@ export function ImageResultCard({ file, onRemove, onUpdate }: ImageResultCardPro
                 Optimized
               </p>
               <div
-                onClick={() => setCompareOpen(true)}
+                onClick={openCompare}
                 className="group/preview relative flex items-center justify-center rounded-lg border border-border bg-white dark:bg-neutral-900 p-4 cursor-pointer transition-all hover:border-primary/40 hover:shadow-md"
                 style={{ minHeight: 160, ...checkerBg }}
               >
@@ -214,38 +221,40 @@ export function ImageResultCard({ file, onRemove, onUpdate }: ImageResultCardPro
         </div>
       </div>
 
-      {/* Compare Modal */}
-      {file.originalUrl && file.optimizedUrl && (
-        <CompareModal
-          open={compareOpen}
-          onClose={() => setCompareOpen(false)}
-          name={file.name}
-          fileType={file.type}
-          originalUrl={file.originalUrl}
-          optimizedUrl={file.optimizedUrl}
-          originalSize={file.originalSize || 0}
-          optimizedSize={file.optimizedSize || 0}
-          savingsPercent={file.savingsPercent || 0}
-          originalDimensions={file.originalDimensions}
-          optimizedDimensions={file.optimizedDimensions}
-          originalFile={file.originalFile}
-          onApply={(result) => {
-            if (onUpdate) {
-              // Revoke old optimized URL if it differs
-              if (file.optimizedUrl && file.optimizedUrl !== result.optimizedUrl) {
-                URL.revokeObjectURL(file.optimizedUrl);
+      {/* Compare Modal — lazy-loaded on first open */}
+      {compareLoaded && file.originalUrl && file.optimizedUrl && (
+        <Suspense fallback={null}>
+          <CompareModal
+            open={compareOpen}
+            onClose={() => setCompareOpen(false)}
+            name={file.name}
+            fileType={file.type}
+            originalUrl={file.originalUrl}
+            optimizedUrl={file.optimizedUrl}
+            originalSize={file.originalSize || 0}
+            optimizedSize={file.optimizedSize || 0}
+            savingsPercent={file.savingsPercent || 0}
+            originalDimensions={file.originalDimensions}
+            optimizedDimensions={file.optimizedDimensions}
+            originalFile={file.originalFile}
+            onApply={(result) => {
+              if (onUpdate) {
+                // Revoke old optimized URL if it differs
+                if (file.optimizedUrl && file.optimizedUrl !== result.optimizedUrl) {
+                  URL.revokeObjectURL(file.optimizedUrl);
+                }
+                onUpdate({
+                  optimizedBlob: result.optimizedBlob,
+                  optimizedUrl: result.optimizedUrl,
+                  optimizedSize: result.optimizedSize,
+                  savings: result.savings,
+                  savingsPercent: result.savingsPercent,
+                  optimizedDimensions: result.optimizedDimensions,
+                });
               }
-              onUpdate({
-                optimizedBlob: result.optimizedBlob,
-                optimizedUrl: result.optimizedUrl,
-                optimizedSize: result.optimizedSize,
-                savings: result.savings,
-                savingsPercent: result.savingsPercent,
-                optimizedDimensions: result.optimizedDimensions,
-              });
-            }
-          }}
-        />
+            }}
+          />
+        </Suspense>
       )}
     </>
   );
