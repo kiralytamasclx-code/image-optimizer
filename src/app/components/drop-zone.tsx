@@ -44,7 +44,14 @@ export function DropZone({ onFilesDropped, hasFiles = false }: DropZoneProps) {
     input.type = 'file';
     input.accept = '.svg,.png,.gif,.jpg,.jpeg,image/svg+xml,image/png,image/gif,image/jpeg';
     input.multiple = true;
-    input.onchange = () => handleFiles(input.files);
+    input.style.display = 'none';
+    input.onchange = () => {
+      handleFiles(input.files);
+      input.remove();
+    };
+    // Safari (and some others) won't open the dialog for a detached input,
+    // so attach it to the document before clicking.
+    document.body.appendChild(input);
     input.click();
   }, [handleFiles]);
 

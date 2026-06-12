@@ -7,9 +7,10 @@ import {
   ControlSlider as SlidersHorizontal,
 } from 'iconoir-react';
 import { formatBytes } from './svg-optimizer';
-import type { ProcessedFile, ImageCompressionOptions } from './types';
+import type { ProcessedFile, ImageCompressionOptions, FileType } from './types';
 import { getFileTypeLabel, getFileTypeBadgeColor, outputExtension } from './types';
 import { SavingsBadge, PressableButton } from './animated';
+import { downloadUrl } from './download';
 
 // Compare modal is heavy (image diff slider); load it only when first opened.
 const CompareModal = lazy(() => import('./compare-modal').then((m) => ({ default: m.CompareModal })));
@@ -30,12 +31,19 @@ export function ImageResultCard({ file, onRemove, onUpdate }: ImageResultCardPro
 
   const handleDownload = () => {
     if (!file.optimizedUrl) return;
-    const a = document.createElement('a');
-    a.href = file.optimizedUrl;
     const ext = outputExtension(file.optimizedBlob, file.type);
-    a.download = file.name.replace(/\.[^.]+$/, '') + `.optimized.${ext}`;
-    a.click();
+    downloadUrl(file.optimizedUrl, file.name.replace(/\.[^.]+$/, '') + `.optimized.${ext}`);
   };
+
+  // Show the output format when it differs from the source (WebP/AVIF conversion, or static GIF -> PNG).
+  const outExt = outputExtension(file.optimizedBlob, file.type);
+  const converted = outExt !== file.type;
+  const outBadgeColor =
+    outExt === 'avif'
+      ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300'
+      : outExt === 'webp'
+        ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-500/20 dark:text-cyan-300'
+        : getFileTypeBadgeColor(outExt as FileType);
 
   const savingsColor =
     (file.savingsPercent || 0) > 20
@@ -55,12 +63,25 @@ export function ImageResultCard({ file, onRemove, onUpdate }: ImageResultCardPro
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div className="flex items-center gap-3 min-w-0">
-            <span
-              className={`shrink-0 inline-flex items-center rounded-md px-2 py-0.5 ${getFileTypeBadgeColor(file.type)}`}
-              style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.03em' }}
-            >
-              {getFileTypeLabel(file.type)}
-            </span>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span
+                className={`inline-flex items-center rounded-md px-2 py-0.5 ${getFileTypeBadgeColor(file.type)}`}
+                style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.03em' }}
+              >
+                {getFileTypeLabel(file.type)}
+              </span>
+              {converted && (
+                <>
+                  <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                  <span
+                    className={`inline-flex items-center rounded-md px-2 py-0.5 ${outBadgeColor}`}
+                    style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.03em' }}
+                  >
+                    {outExt.toUpperCase()}
+                  </span>
+                </>
+              )}
+            </div>
             <div className="min-w-0">
               <p className="truncate" style={{ fontSize: '0.9375rem' }}>
                 {file.name}

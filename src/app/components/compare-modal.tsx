@@ -426,6 +426,10 @@ export function CompareModal({
   // Apply handler
   const handleApply = useCallback(() => {
     if (!hasChanges || !currentOptimizedBlob || !onApply) return;
+    // The card takes ownership of this URL once applied; stop tracking it here
+    // so the unmount cleanup (which revokes everything in internalUrlsRef)
+    // doesn't revoke the URL the card now depends on for preview + download.
+    internalUrlsRef.current = internalUrlsRef.current.filter((u) => u !== currentOptimizedUrl);
     onApply({
       optimizedBlob: currentOptimizedBlob,
       optimizedUrl: currentOptimizedUrl,

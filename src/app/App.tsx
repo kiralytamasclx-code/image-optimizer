@@ -22,6 +22,7 @@ import type { ProcessedFile, ImageCompressionOptions } from './components/types'
 import { getFileType, DEFAULT_OPTIONS, outputExtension } from './components/types';
 import { CountUp, StaggeredStatCard, ResultCardWrapper, SavingsBadge, PressableButton } from './components/animated';
 import { Footer } from './components/footer';
+import { downloadUrl } from './components/download';
 
 export default function App() {
   const [files, setFiles] = useState<ProcessedFile[]>([]);
@@ -195,11 +196,8 @@ export default function App() {
       }
       const blob = await zip.generateAsync({ type: 'blob' });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'optimized-images.zip';
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadUrl(url, 'optimized-images.zip');
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     } finally {
       setZipping(false);
     }

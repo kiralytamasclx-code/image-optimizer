@@ -15,6 +15,7 @@ import {
 import { OptimizationResult, formatBytes } from './svg-optimizer';
 import { getFileTypeLabel, getFileTypeBadgeColor } from './types';
 import { SavingsBadge, PressableButton } from './animated';
+import { downloadUrl } from './download';
 
 // Compare modal is heavy (image diff slider); load it only when first opened.
 const CompareModal = lazy(() => import('./compare-modal').then((m) => ({ default: m.CompareModal })));
@@ -55,11 +56,8 @@ export function SVGResultCard({ name, result, onRemove }: SVGResultCardProps) {
   const handleDownload = () => {
     const blob = new Blob([result.optimized], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = name.replace('.svg', '') + '.optimized.svg';
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadUrl(url, name.replace('.svg', '') + '.optimized.svg');
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   const savingsColor =
