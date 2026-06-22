@@ -36,6 +36,10 @@ Everything runs on the client. There is no server round-trip; the same code that
 
 There is no backend. Images are read, compressed, and downloaded entirely on the client using the Canvas API, `browser-image-compression`, and a couple of small GIF libraries. Nothing is uploaded, and the optimizing itself needs no network connection.
 
+## Browser support
+
+Built for current evergreen browsers (recent Chrome, Edge, Firefox, and Safari). The image pipeline relies on the Canvas API, and AVIF encoding runs as WebAssembly that loads on demand, so very old browsers are out of scope. Safari's canvas encoder, which sometimes ignores the requested quality, is handled with a quality-cascade fallback.
+
 ## Tech stack
 
 - React 18 and TypeScript
