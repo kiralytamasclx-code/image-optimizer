@@ -38,7 +38,7 @@ export function CompressionSettings({ options, onChange }: CompressionSettingsPr
             className="text-muted-foreground"
             style={{ fontSize: '0.75rem' }}
           >
-            — applied automatically when new JPG, PNG & GIF files are added
+            — applied automatically when new JPG, PNG, GIF & PDF files are added
           </span>
         </div>
         <ChevronDown
@@ -152,6 +152,39 @@ export function CompressionSettings({ options, onChange }: CompressionSettingsPr
                 Preserve EXIF data
               </span>
             </label>
+          </div>
+
+          {/* PDF quality */}
+          <div>
+            <label
+              className="text-foreground block mb-2"
+              style={{ fontSize: '0.8125rem', fontWeight: 500 }}
+            >
+              PDF quality
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {([
+                ['screen', 'Smaller'],
+                ['ebook', 'Balanced'],
+                ['printer', 'Higher quality'],
+              ] as const).map(([preset, label]) => (
+                <button
+                  key={preset}
+                  onClick={() => update({ pdfPreset: preset })}
+                  className={`rounded-md px-2.5 py-1 transition-colors ${
+                    options.pdfPreset === preset
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+                  style={{ fontSize: '0.75rem' }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="text-muted-foreground mt-2" style={{ fontSize: '0.6875rem' }}>
+              Downsamples images in PDFs. Text stays selectable.
+            </p>
           </div>
         </div>
       </SmoothCollapse>

@@ -25,9 +25,10 @@ export default defineConfig({
     tailwindcss(),
   ],
   optimizeDeps: {
-    // @jsquash/avif loads its own WASM at runtime; letting esbuild pre-bundle
-    // it breaks the wasm path resolution, so exclude it from dep optimization.
-    exclude: ['@jsquash/avif'],
+    // These load their own WASM at runtime; letting esbuild pre-bundle them
+    // breaks the wasm path resolution, so exclude them from dep optimization.
+    // (@jsquash/avif = AVIF encoder, @jspawn/ghostscript-wasm = PDF compressor.)
+    exclude: ['@jsquash/avif', '@jspawn/ghostscript-wasm'],
   },
   // @jsquash's AVIF encoder ships a Web Worker; the ES worker format is required
   // for it to bundle under Vite's code-splitting production build.

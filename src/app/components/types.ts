@@ -1,12 +1,16 @@
-export type FileType = 'svg' | 'png' | 'gif' | 'jpg';
+export type FileType = 'svg' | 'png' | 'gif' | 'jpg' | 'pdf';
 
 export type OutputFormat = 'original' | 'webp' | 'avif';
+
+// Ghostscript -dPDFSETTINGS presets: screen (~72dpi), ebook (~150dpi), printer (~300dpi).
+export type PdfPreset = 'screen' | 'ebook' | 'printer';
 
 export interface ImageCompressionOptions {
   quality: number;       // 0-1 for PNG/GIF
   maxWidthOrHeight: number; // max dimension in px, 0 = no resize
   preserveExif: boolean;
   outputFormat: OutputFormat;
+  pdfPreset: PdfPreset;  // applied to PDF files
 }
 
 export const DEFAULT_OPTIONS: ImageCompressionOptions = {
@@ -14,6 +18,7 @@ export const DEFAULT_OPTIONS: ImageCompressionOptions = {
   maxWidthOrHeight: 0,
   preserveExif: false,
   outputFormat: 'original',
+  pdfPreset: 'ebook',
 };
 
 export interface ProcessedFile {
@@ -44,6 +49,7 @@ export function getFileType(file: File): FileType | null {
   if (ext === 'png' || file.type === 'image/png') return 'png';
   if (ext === 'gif' || file.type === 'image/gif') return 'gif';
   if (ext === 'jpg' || ext === 'jpeg' || file.type === 'image/jpeg') return 'jpg';
+  if (ext === 'pdf' || file.type === 'application/pdf') return 'pdf';
   return null;
 }
 
@@ -57,6 +63,7 @@ export function getFileTypeBadgeColor(type: FileType): string {
     case 'png': return 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300';
     case 'gif': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300';
     case 'jpg': return 'bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-300';
+    case 'pdf': return 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300';
   }
 }
 
@@ -70,6 +77,7 @@ export function outputExtension(blob: Blob | undefined, fallback: FileType): str
     case 'image/jpeg': return 'jpg';
     case 'image/png': return 'png';
     case 'image/gif': return 'gif';
+    case 'application/pdf': return 'pdf';
     default: return fallback;
   }
 }

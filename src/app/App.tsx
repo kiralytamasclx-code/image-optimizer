@@ -9,12 +9,14 @@ import {
   SunLight,
   HalfMoon,
   Lock,
+  Page,
 } from 'iconoir-react';
 import { motion, AnimatePresence } from 'motion/react';
 import JSZip from 'jszip';
 import { DropZone } from './components/drop-zone';
 import { SVGResultCard } from './components/svg-result-card';
 import { ImageResultCard } from './components/image-result-card';
+import { PdfResultCard } from './components/pdf-result-card';
 import { CompressionSettings } from './components/compression-settings';
 import { optimizeSVG, formatBytes } from './components/svg-optimizer';
 import { optimizeImage } from './components/image-optimizer';
@@ -88,6 +90,35 @@ export default function App() {
         savings: result.savings,
         savingsPercent: result.savingsPercent,
       };
+    }
+
+    if (fileType === 'pdf') {
+      try {
+        // Lazy-load the Ghostscript worker only when a PDF is actually processed.
+        const { optimizePdf } = await import('./components/pdf-optimizer');
+        const result = await optimizePdf(rawFile, optionsRef.current.pdfPreset);
+        return {
+          id,
+          name: rawFile.name,
+          type: 'pdf',
+          status: 'done',
+          optimizedBlob: result.optimizedBlob,
+          optimizedUrl: URL.createObjectURL(result.optimizedBlob),
+          originalSize: result.originalSize,
+          optimizedSize: result.optimizedSize,
+          savings: result.savings,
+          savingsPercent: result.savingsPercent,
+        };
+      } catch (err: any) {
+        return {
+          id,
+          name: rawFile.name,
+          type: 'pdf',
+          status: 'error',
+          error: err?.message || 'Could not compress this PDF (it may be encrypted or unsupported)',
+          originalSize: rawFile.size,
+        };
+      }
     }
 
     // PNG or GIF
@@ -207,6 +238,7 @@ export default function App() {
     const specs = [
       { url: 'samples/sample-illustration.svg', name: 'sample-illustration.svg', type: 'image/svg+xml' },
       { url: 'samples/sample-photo.png', name: 'sample-photo.png', type: 'image/png' },
+      { url: 'samples/sample-document.pdf', name: 'sample-document.pdf', type: 'application/pdf' },
     ];
     try {
       const sampleFiles = await Promise.all(
@@ -234,6 +266,7 @@ export default function App() {
   const pngCount = doneFiles.filter((f) => f.type === 'png').length;
   const gifCount = doneFiles.filter((f) => f.type === 'gif').length;
   const jpgCount = doneFiles.filter((f) => f.type === 'jpg').length;
+  const pdfCount = doneFiles.filter((f) => f.type === 'pdf').length;
 
   const hasImageFiles = files.some((f) => f.type === 'png' || f.type === 'gif' || f.type === 'jpg');
 
@@ -268,7 +301,7 @@ export default function App() {
                 className="text-muted-foreground"
                 style={{ fontSize: '0.8125rem' }}
               >
-                Optimize SVGs, compress JPGs, PNGs & GIFs — all in-browser
+                Compress PDFs, optimize SVGs, shrink JPGs, PNGs & GIFs — all in-browser
               </p>
             </div>
           </div>
@@ -400,6 +433,11 @@ export default function App() {
                     {jpgCount} JPG
                   </span>
                 )}
+                {pdfCount > 0 && (
+                  <span className="bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300 px-1.5 py-0.5 rounded">
+                    {pdfCount} PDF
+                  </span>
+                )}
               </div>
             </StaggeredStatCard>
 
@@ -529,6 +567,14 @@ export default function App() {
                 );
               }
 
+              if (file.type === 'pdf') {
+                return (
+                  <ResultCardWrapper key={file.id} index={index}>
+                    <PdfResultCard file={file} onRemove={() => removeFile(file.id)} />
+                  </ResultCardWrapper>
+                );
+              }
+
               return (
                 <ResultCardWrapper key={file.id} index={index}>
                   <ImageResultCard
@@ -544,7 +590,7 @@ export default function App() {
 
         {/* Empty state features */}
         {files.length === 0 && (
-          <div className="mt-10 grid grid-cols-2 sm:grid-cols-4 gap-5">
+          <div className="mt-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5">
             <div className="flex flex-col items-center text-center gap-3 rounded-xl border border-border bg-card p-5">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-500/20">
                 <FileCode2Icon className="h-4 w-4 text-violet-600 dark:text-violet-400" />
@@ -598,6 +644,20 @@ export default function App() {
                   style={{ fontSize: '0.75rem' }}
                 >
                   Reduces GIF file size via re-encoding and optional resizing
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col items-center text-center gap-3 rounded-xl border border-border bg-card p-5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-100 dark:bg-red-500/20">
+                <Page className="h-4 w-4 text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <p style={{ fontSize: '0.875rem' }}>PDF Compression</p>
+                <p
+                  className="mt-1 text-muted-foreground"
+                  style={{ fontSize: '0.75rem' }}
+                >
+                  Downsamples images and subsets fonts, keeping text selectable
                 </p>
               </div>
             </div>

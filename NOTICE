@@ -1,0 +1,21 @@
+Image Optimizer — third-party notices
+======================================
+
+PDF compression in this application is powered by Ghostscript, compiled to
+WebAssembly and run entirely in the user's browser.
+
+Ghostscript is Copyright (C) Artifex Software, Inc. and is licensed under the
+GNU Affero General Public License, version 3 (AGPL-3.0). Because this
+application bundles and conveys Ghostscript (via the @jspawn/ghostscript-wasm
+build) to users over a network to perform client-side PDF compression, the
+application as a whole is distributed under the AGPL-3.0. See the LICENSE file
+for the full text.
+
+  - Ghostscript ............ https://www.ghostscript.com/   (AGPL-3.0)
+  - WASM build ............. @jspawn/ghostscript-wasm
+                             https://www.npmjs.com/package/@jspawn/ghostscript-wasm
+  - Corresponding source ... https://github.com/kiralytamasclx-code/image-optimizer
+
+The image / SVG / GIF optimization features use permissively-licensed
+libraries (browser-image-compression, @jsquash/avif, gifenc, gifuct-js,
+jszip — MIT / Apache-2.0), which impose no copyleft requirement on their own.

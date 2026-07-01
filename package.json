@@ -8,6 +8,7 @@
     "dev": "vite"
   },
   "dependencies": {
+    "@jspawn/ghostscript-wasm": "^0.0.2",
     "@jsquash/avif": "^2.1.1",
     "browser-image-compression": "^2.0.2",
     "gifenc": "^1.0.3",
@@ -22,6 +23,7 @@
   "devDependencies": {
     "@tailwindcss/vite": "4.1.12",
     "@vitejs/plugin-react": "4.7.0",
+    "pdf-lib": "^1.17.1",
     "tailwindcss": "4.1.12",
     "vite": "^6.4.3"
   },

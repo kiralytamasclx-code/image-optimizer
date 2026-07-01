@@ -13,9 +13,10 @@ const ACCEPTED_TYPES = [
   'image/png',
   'image/gif',
   'image/jpeg',
+  'application/pdf',
 ];
 
-const ACCEPTED_EXTENSIONS = ['.svg', '.png', '.gif', '.jpg', '.jpeg'];
+const ACCEPTED_EXTENSIONS = ['.svg', '.png', '.gif', '.jpg', '.jpeg', '.pdf'];
 
 export function DropZone({ onFilesDropped, hasFiles = false }: DropZoneProps) {
   const [isDragOver, setIsDragOver] = useState(false);
@@ -42,7 +43,7 @@ export function DropZone({ onFilesDropped, hasFiles = false }: DropZoneProps) {
   const openFilePicker = useCallback(() => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.svg,.png,.gif,.jpg,.jpeg,image/svg+xml,image/png,image/gif,image/jpeg';
+    input.accept = '.svg,.png,.gif,.jpg,.jpeg,.pdf,image/svg+xml,image/png,image/gif,image/jpeg,application/pdf';
     input.multiple = true;
     input.style.display = 'none';
     input.onchange = () => {
@@ -238,7 +239,7 @@ export function DropZone({ onFilesDropped, hasFiles = false }: DropZoneProps) {
             className="text-muted-foreground"
             style={{ fontSize: hasFiles ? '0.75rem' : '0.875rem', marginTop: hasFiles ? '0.125rem' : '0.25rem' }}
           >
-            Supports multiple files • SVG, PNG, GIF, JPG •{' '}
+            Supports multiple files • SVG, PNG, GIF, JPG, PDF •{' '}
             <span className="inline-flex items-center gap-0.5">
               <Clipboard className="inline h-3 w-3" />
               Ctrl+V to paste
