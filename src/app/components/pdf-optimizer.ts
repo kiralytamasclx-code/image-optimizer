@@ -83,9 +83,10 @@ export async function optimizePdf(
       savings,
       savingsPercent: originalSize > 0 ? (savings / originalSize) * 100 : 0,
     };
-  } catch {
-    return noChange();
   } finally {
     worker.terminate();
   }
+  // Note: a hard worker/engine failure (e.g. an encrypted or corrupt PDF)
+  // rejects the promise above and propagates to the caller, which surfaces an
+  // error card. "Valid but not smaller" is handled by noChange() (a done card).
 }

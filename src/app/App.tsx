@@ -171,8 +171,27 @@ export default function App() {
       }));
       setFiles((prev) => [...placeholders, ...prev]);
 
-      // Process all files concurrently
-      const results = await Promise.all(rawFiles.map((f) => processFile(f)));
+      // Process images/SVG concurrently (cheap), but cap PDFs: each spawns a
+      // ~16 MB Ghostscript worker, so dropping many at once could exhaust memory.
+      const results: ProcessedFile[] = new Array(rawFiles.length);
+      const pdfIndices: number[] = [];
+      await Promise.all(
+        rawFiles.map(async (f, i) => {
+          if (getFileType(f) === 'pdf') { pdfIndices.push(i); return; }
+          results[i] = await processFile(f);
+        })
+      );
+      const PDF_CONCURRENCY = 2;
+      let cursor = 0;
+      const runPdfs = async () => {
+        while (cursor < pdfIndices.length) {
+          const i = pdfIndices[cursor++];
+          results[i] = await processFile(rawFiles[i]);
+        }
+      };
+      await Promise.all(
+        Array.from({ length: Math.min(PDF_CONCURRENCY, pdfIndices.length) }, runPdfs)
+      );
 
       setFiles((prev) => {
         // Remove placeholders and prepend results
