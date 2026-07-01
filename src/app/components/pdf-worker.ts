@@ -40,7 +40,13 @@ self.onmessage = async (e: MessageEvent<CompressRequest>) => {
   const args = argsFor(preset);
   try {
     // Lazy: engine JS is a dynamic import; gs.wasm is a separate emitted asset.
-    const { default: createGs } = await import('@jspawn/ghostscript-wasm');
+    // Import gs.js (the Emscripten CJS factory) DIRECTLY rather than the package
+    // default (gs.mjs). gs.mjs is a Node-oriented shim that relies on
+    // `globalThis.exports.Module` being set by gs.js's UMD `exports` branch; once
+    // Vite bundles it for production, gs.js takes its `module.exports` branch
+    // instead, so the shim falls through to an undefined `createModule`
+    // ("createModule is not defined"). Importing gs.js skips the shim entirely.
+    const { default: createGs } = await import('@jspawn/ghostscript-wasm/gs.js');
     const Module: any = await createGs({
       noInitialRun: true,
       arguments: args,
