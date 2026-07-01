@@ -1,5 +1,7 @@
 # Image Optimizer
 
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPLv3-blue.svg)](LICENSE) [![Live demo](https://img.shields.io/badge/demo-live-brightgreen.svg)](https://image-optimizer.tamaskiraly.com) [![Vite](https://img.shields.io/badge/Vite-6-646CFF.svg?logo=vite&logoColor=white)](https://vitejs.dev) [![100% client-side](https://img.shields.io/badge/100%25-client--side-8B5CF6.svg)](#privacy)
+
 ![Image Optimizer](public/og.png)
 
 A browser-based tool for optimizing SVGs, compressing JPG, PNG, and GIF images, and shrinking PDFs. Everything runs locally in the browser, so files are never uploaded to a server.
@@ -36,7 +38,7 @@ Everything runs on the client. There is no server round-trip; the same code that
 
 ## Privacy
 
-There is no backend. Images are read, compressed, and downloaded entirely on the client using the Canvas API, `browser-image-compression`, and a couple of small GIF libraries. Nothing is uploaded, and the optimizing itself needs no network connection.
+There is no backend. Files are read, compressed, and downloaded entirely on the client: images via the Canvas API and `browser-image-compression`, GIFs via small re-encoding libraries, and PDFs via Ghostscript compiled to WebAssembly. Nothing is uploaded, and the optimizing itself needs no network connection.
 
 ## Browser support
 
@@ -93,7 +95,9 @@ vercel deploy --prod
 
 ## Licensing
 
-The image, SVG, and GIF features use permissively-licensed libraries (MIT / Apache-2.0). PDF compression uses **Ghostscript**, which is **AGPL-3.0** — and because the app ships and runs Ghostscript (as WebAssembly) in the user's browser, the project as a whole is distributed under the **GNU AGPL-3.0**. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
+The image, SVG, and GIF features use permissively-licensed libraries (MIT / Apache-2.0). PDF compression uses **Ghostscript**, which is **AGPL-3.0**, and because the app ships and runs Ghostscript (as WebAssembly) in the user's browser, the project as a whole is distributed under the **GNU AGPL-3.0**. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
+
+If you fork this and deploy it, the AGPL requires you to keep your source public and offer it to your users. If you would rather avoid that obligation, remove the Ghostscript PDF path and the remaining image/SVG/GIF code can be relicensed permissively.
 
 ## Author
 
