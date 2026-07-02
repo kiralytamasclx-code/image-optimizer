@@ -16,7 +16,7 @@ Drop in one file or a few dozen. The app picks the right optimizer for each file
 - **JPG.** Quality-based compression with an optional toggle to keep EXIF data. There is a quality-cascade fallback for Safari, whose canvas encoder sometimes ignores the quality value.
 - **PNG.** Lossy or lossless compression, plus an optional maximum width or height for downscaling.
 - **GIF.** Animated files are re-encoded frame by frame; static ones are converted to PNG. Resizing is optional.
-- **PDF.** Ghostscript (compiled to WebAssembly) downsamples embedded images, recompresses them, and subsets fonts, while keeping text selectable. Three presets trade size against fidelity, with the biggest wins on scanned or image-heavy documents.
+- **PDF.** Ghostscript (compiled to WebAssembly) downsamples embedded images, recompresses them, and subsets fonts, while keeping the existing text and vectors intact (it never rasterizes). Three presets trade size against fidelity, with the biggest wins on scanned or image-heavy documents. A PDF whose text was already flattened to outlines by a design tool stays non-selectable, and a text-only PDF sees little change since it has no images to downsample.
 
 A few other things worth knowing:
 

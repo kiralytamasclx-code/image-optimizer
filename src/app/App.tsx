@@ -676,7 +676,7 @@ export default function App() {
                   className="mt-1 text-muted-foreground"
                   style={{ fontSize: '0.75rem' }}
                 >
-                  Downsamples images and subsets fonts, keeping text selectable
+                  Recompresses images and subsets fonts, without rasterizing pages
                 </p>
               </div>
             </div>

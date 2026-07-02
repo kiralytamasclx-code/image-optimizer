@@ -183,7 +183,7 @@ export function CompressionSettings({ options, onChange }: CompressionSettingsPr
               ))}
             </div>
             <p className="text-muted-foreground mt-2" style={{ fontSize: '0.6875rem' }}>
-              Downsamples images in PDFs. Text stays selectable.
+              Recompresses images and cleans up the PDF (no rasterizing). Biggest savings on image-heavy files.
             </p>
           </div>
         </div>
