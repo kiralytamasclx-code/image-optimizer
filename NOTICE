@@ -1,16 +1,20 @@
 Image Optimizer — third-party notices
 ======================================
 
-PDF compression in this application is powered by Ghostscript, compiled to
+PDF compression in this application is powered by MuPDF (the default,
+"text-safe" mode) and Ghostscript (the opt-in "Maximum" mode), both compiled to
 WebAssembly and run entirely in the user's browser.
 
-Ghostscript is Copyright (C) Artifex Software, Inc. and is licensed under the
-GNU Affero General Public License, version 3 (AGPL-3.0). Because this
-application bundles and conveys Ghostscript (via the @jspawn/ghostscript-wasm
-build) to users over a network to perform client-side PDF compression, the
-application as a whole is distributed under the AGPL-3.0. See the LICENSE file
-for the full text.
+MuPDF and Ghostscript are Copyright (C) Artifex Software, Inc. and are licensed
+under the GNU Affero General Public License, version 3 (AGPL-3.0). Because this
+application bundles and conveys them (via the `mupdf` and
+@jspawn/ghostscript-wasm builds) to users over a network to perform client-side
+PDF compression, the application as a whole is distributed under the AGPL-3.0.
+See the LICENSE file for the full text.
 
+  - MuPDF .................. https://mupdf.com/   (AGPL-3.0)
+  - WASM build ............. mupdf
+                             https://www.npmjs.com/package/mupdf
   - Ghostscript ............ https://www.ghostscript.com/   (AGPL-3.0)
   - WASM build ............. @jspawn/ghostscript-wasm
                              https://www.npmjs.com/package/@jspawn/ghostscript-wasm

@@ -154,15 +154,34 @@ export function CompressionSettings({ options, onChange }: CompressionSettingsPr
             </label>
           </div>
 
-          {/* PDF quality */}
+          {/* PDF compression */}
           <div>
             <label
               className="text-foreground block mb-2"
               style={{ fontSize: '0.8125rem', fontWeight: 500 }}
             >
-              PDF quality
+              PDF compression
             </label>
             <div className="flex flex-wrap gap-1.5">
+              {([
+                ['text-safe', 'Text-safe'],
+                ['max', 'Maximum'],
+              ] as const).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  onClick={() => update({ pdfMode: mode })}
+                  className={`rounded-md px-2.5 py-1 transition-colors ${
+                    options.pdfMode === mode
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+                  style={{ fontSize: '0.75rem' }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-1.5 mt-2">
               {([
                 ['screen', 'Smaller'],
                 ['ebook', 'Balanced'],
@@ -183,7 +202,9 @@ export function CompressionSettings({ options, onChange }: CompressionSettingsPr
               ))}
             </div>
             <p className="text-muted-foreground mt-2" style={{ fontSize: '0.6875rem' }}>
-              Recompresses images and cleans up the PDF (no rasterizing). Biggest savings on image-heavy files.
+              {options.pdfMode === 'text-safe'
+                ? 'Recompresses images and cleans up the PDF while keeping text selectable and vectors intact.'
+                : 'Smallest size, but can drop selectable text on some PDFs (e.g. design-tool exports). Uses Ghostscript.'}
             </p>
           </div>
         </div>

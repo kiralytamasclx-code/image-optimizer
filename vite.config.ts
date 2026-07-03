@@ -27,13 +27,21 @@ export default defineConfig({
   optimizeDeps: {
     // These load their own WASM at runtime; letting esbuild pre-bundle them
     // breaks the wasm path resolution, so exclude them from dep optimization.
-    // (@jsquash/avif = AVIF encoder, @jspawn/ghostscript-wasm = PDF compressor.)
-    exclude: ['@jsquash/avif', '@jspawn/ghostscript-wasm'],
+    // (@jsquash/avif = AVIF encoder, mupdf = text-safe PDF compressor,
+    //  @jspawn/ghostscript-wasm = opt-in "maximum compression" PDF path.)
+    exclude: ['@jsquash/avif', 'mupdf', '@jspawn/ghostscript-wasm'],
   },
   // @jsquash's AVIF encoder ships a Web Worker; the ES worker format is required
   // for it to bundle under Vite's code-splitting production build.
   worker: {
     format: 'es',
+  },
+  // MuPDF's wasm glue (loaded in the PDF worker) uses top-level await, which
+  // requires an es2022 target — the Vite default ("modules" ~ es2020) rejects it
+  // at build time. es2022 is supported by all evergreen browsers (Chrome 89+,
+  // Safari 15+, Firefox 89+, Edge 89+), matching this app's browser-support baseline.
+  build: {
+    target: 'es2022',
   },
   resolve: {
     alias: {

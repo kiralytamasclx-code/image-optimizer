@@ -3,14 +3,21 @@ export type FileType = 'svg' | 'png' | 'gif' | 'jpg' | 'pdf';
 export type OutputFormat = 'original' | 'webp' | 'avif';
 
 // Ghostscript -dPDFSETTINGS presets: screen (~72dpi), ebook (~150dpi), printer (~300dpi).
+// Only used by the opt-in 'max' PDF mode (Ghostscript).
 export type PdfPreset = 'screen' | 'ebook' | 'printer';
+
+// 'text-safe' (default): MuPDF sanitize/garbage-collect — keeps selectable text
+// and vectors intact, recompresses images. 'max': Ghostscript re-distill — smaller
+// on some files but can drop selectable text (e.g. Type3 design-tool exports).
+export type PdfMode = 'text-safe' | 'max';
 
 export interface ImageCompressionOptions {
   quality: number;       // 0-1 for PNG/GIF
   maxWidthOrHeight: number; // max dimension in px, 0 = no resize
   preserveExif: boolean;
   outputFormat: OutputFormat;
-  pdfPreset: PdfPreset;  // applied to PDF files
+  pdfMode: PdfMode;      // how PDFs are compressed (text-safe by default)
+  pdfPreset: PdfPreset;  // image fidelity for the 'max' (Ghostscript) mode
 }
 
 export const DEFAULT_OPTIONS: ImageCompressionOptions = {
@@ -18,6 +25,7 @@ export const DEFAULT_OPTIONS: ImageCompressionOptions = {
   maxWidthOrHeight: 0,
   preserveExif: false,
   outputFormat: 'original',
+  pdfMode: 'text-safe',
   pdfPreset: 'ebook',
 };
 

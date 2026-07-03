@@ -94,9 +94,12 @@ export default function App() {
 
     if (fileType === 'pdf') {
       try {
-        // Lazy-load the Ghostscript worker only when a PDF is actually processed.
+        // Lazy-load the PDF worker only when a PDF is actually processed.
         const { optimizePdf } = await import('./components/pdf-optimizer');
-        const result = await optimizePdf(rawFile, optionsRef.current.pdfPreset);
+        const result = await optimizePdf(rawFile, {
+          mode: optionsRef.current.pdfMode,
+          preset: optionsRef.current.pdfPreset,
+        });
         return {
           id,
           name: rawFile.name,
@@ -676,7 +679,7 @@ export default function App() {
                   className="mt-1 text-muted-foreground"
                   style={{ fontSize: '0.75rem' }}
                 >
-                  Recompresses images and subsets fonts, without rasterizing pages
+                  Recompresses images and cleans up the file while keeping text selectable
                 </p>
               </div>
             </div>

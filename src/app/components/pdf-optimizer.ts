@@ -1,14 +1,20 @@
-// Main-thread API in front of the PDF compression worker.
+// Main-thread API in front of the PDF compression workers.
 //
-// Spins up a fresh module worker per job (the Emscripten Ghostscript module is
-// effectively single-run) and terminates it after, so the ~16 MB WASM instance
-// is freed. Falls back to the ORIGINAL blob whenever the "optimized" output is
-// not a valid, smaller PDF — callers always get the smallest valid PDF and
-// savings is never negative.
+// Two engines, picked by `mode`:
+//   'text-safe' (default) -> MuPDF (pdf-worker-mupdf.ts): keeps selectable text
+//                            and vectors intact; recompresses images.
+//   'max'                 -> Ghostscript (pdf-worker.ts): smaller on some files
+//                            but can drop selectable text (e.g. Type3 exports).
+//
+// Spins up a fresh module worker per job (both Emscripten modules are effectively
+// single-run) and terminates it after, so the multi-MB WASM instance is freed.
+// Falls back to the ORIGINAL blob whenever the "optimized" output is not a valid,
+// smaller PDF — callers always get the smallest valid PDF and savings is never
+// negative.
 
-import type { PdfPreset } from './types';
+import type { PdfPreset, PdfMode } from './types';
 
-export type { PdfPreset };
+export type { PdfPreset, PdfMode };
 
 export interface PdfOptimizeResult {
   optimizedBlob: Blob;
@@ -20,10 +26,28 @@ export interface PdfOptimizeResult {
   savingsPercent: number;
 }
 
+export interface PdfOptimizeOptions {
+  /** 'text-safe' (MuPDF, default) or 'max' (Ghostscript). */
+  mode?: PdfMode;
+  /** Image fidelity for the 'max' (Ghostscript) mode. */
+  preset?: PdfPreset;
+}
+
 interface WorkerResponse {
   ok: boolean;
   bytes?: ArrayBuffer;
   error?: string;
+}
+
+// Image-recompression JPEG quality for the text-safe (MuPDF) mode, per preset.
+// 'screen' = Smaller, 'ebook' = Balanced, 'printer' = Higher quality.
+function presetToJpegQuality(preset: PdfPreset): number {
+  switch (preset) {
+    case 'screen': return 60;
+    case 'printer': return 88;
+    case 'ebook':
+    default: return 75;
+  }
 }
 
 function isPdf(bytes: Uint8Array): boolean {
@@ -36,13 +60,24 @@ function isPdf(bytes: Uint8Array): boolean {
   );
 }
 
+// Two literal `new Worker(new URL('./literal', import.meta.url))` sites so Vite
+// statically code-splits each worker (and its lazily-loaded engine + wasm) as
+// separate assets. Neither is fetched until a PDF is actually compressed.
+function spawnWorker(mode: PdfMode): Worker {
+  return mode === 'max'
+    ? new Worker(new URL('./pdf-worker.ts', import.meta.url), { type: 'module' })
+    : new Worker(new URL('./pdf-worker-mupdf.ts', import.meta.url), { type: 'module' });
+}
+
 /**
- * Compress a PDF entirely client-side in a Web Worker (Ghostscript WASM).
- * Returns the original blob unchanged if compression fails or does not shrink it.
+ * Compress a PDF entirely client-side in a Web Worker.
+ * Default 'text-safe' mode (MuPDF) preserves selectable text; 'max' (Ghostscript)
+ * trades selectable text for smaller output. Returns the original blob unchanged
+ * if compression fails or does not shrink it.
  */
 export async function optimizePdf(
   file: File | Blob,
-  preset: PdfPreset = 'ebook',
+  { mode = 'text-safe', preset = 'ebook' }: PdfOptimizeOptions = {},
 ): Promise<PdfOptimizeResult> {
   const originalBuffer = await file.arrayBuffer();
   const originalSize = originalBuffer.byteLength;
@@ -55,10 +90,7 @@ export async function optimizePdf(
     savingsPercent: 0,
   });
 
-  // new URL(..., import.meta.url) is the pattern Vite statically analyses to
-  // code-split the worker (and its lazily-imported engine + wasm) as separate
-  // assets. Fresh worker per job; terminated in `finally`.
-  const worker = new Worker(new URL('./pdf-worker.ts', import.meta.url), { type: 'module' });
+  const worker = spawnWorker(mode);
   try {
     // Clone the buffer for transfer so `originalBuffer` stays intact for fallback.
     const transfer = originalBuffer.slice(0);
@@ -68,7 +100,12 @@ export async function optimizePdf(
         else reject(new Error(e.data.error ?? 'PDF compression failed'));
       };
       worker.onerror = (ev) => reject(new Error(ev.message || 'PDF worker crashed'));
-      worker.postMessage({ bytes: transfer, preset }, [transfer]);
+      // Ghostscript takes the DPI preset; MuPDF takes an image JPEG quality.
+      const payload =
+        mode === 'max'
+          ? { bytes: transfer, preset }
+          : { bytes: transfer, quality: presetToJpegQuality(preset) };
+      worker.postMessage(payload, [transfer]);
     });
 
     const bytes = new Uint8Array(out);
