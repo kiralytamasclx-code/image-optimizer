@@ -6,7 +6,7 @@ A tool to find product design openings (Product / UX / UI / Visual Designer) at 
 
 ## Status
 
-Research done, nothing built yet. Waiting on answers to the [open questions](#open-questions).
+Research done and the scope questions are answered (see [Decisions](#decisions)). Nothing built yet.
 
 ## Research findings (September 2026)
 
@@ -54,12 +54,14 @@ The only running cost is Claude usage for sorting jobs and drafting messages.
 
 **Scope note:** about 121 companies means the first pass could be done by hand in a weekend. The tool's real value is running weekly and flagging *new* openings the day they appear, so build it as a monitor.
 
-## Open questions
+## Decisions
 
-1. **Scope:** Romania-only jobs, or also remote EU roles at Romanian companies (and Romanian roles at foreign companies)?
-2. **Report destination:** Google Sheet, Notion, a web page, or a CSV file?
-3. **Frequency:** on demand, or automatically every week?
-4. **Seniority:** mid, senior or lead?
+Answered September 2026:
+
+1. **Scope:** jobs based in Romania plus remote EU roles at Romanian companies. Romanian-based roles at foreign companies are out for now.
+2. **Report destination:** a Google Sheet. It keeps history and lets the user track status for each job (new, applied, messaged).
+3. **Frequency:** both. A weekly scheduled run that flags only new openings, plus a manual trigger for checking sooner.
+4. **Seniority:** mid, senior and lead. The report should show each job's seniority so it can be filtered or sorted.
 
 ## Sources
 
