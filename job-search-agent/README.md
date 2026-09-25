@@ -2,11 +2,11 @@
 
 A tool to find product design openings (Product / UX / UI / Visual Designer) at Romanian SaaS startups, produce a report, and support a human-in-the-loop apply and outreach process.
 
-> This folder is a staging point. The tool doesn't belong in the `image-optimizer` repo long term; move it to its own repository once the scope is settled.
+> This folder is a staging point. The tool doesn't belong in the `image-optimizer` repo; move the whole folder to the root of its own repository (`job-search-agent`). The GitHub Actions workflow in `.github/workflows/` only runs once it's at a repository's root.
 
 ## Status
 
-Research done and the scope questions are answered (see [Decisions](#decisions)). Nothing built yet.
+First version built and tested against sample feeds. It hasn't run against the real ATS feeds yet, because the environment it was built in can't reach them. The first real run happens in GitHub Actions. The company list has 8 starter companies and needs filling in.
 
 ## Research findings (September 2026)
 
@@ -50,7 +50,7 @@ The pipeline:
 4. **Report:** company, role, job description summary, date posted, apply link, company LinkedIn URL (for the user to open manually).
 5. **Human in the loop:** the user reviews and applies. For companies with no openings, the user clicks "I'm interested" and sends a Claude-drafted message to the design or product lead.
 
-The only running cost is Claude usage for sorting jobs and drafting messages.
+Everything runs free except the optional Claude step (see Decisions, point 5).
 
 **Scope note:** about 121 companies means the first pass could be done by hand in a weekend. The tool's real value is running weekly and flagging *new* openings the day they appear, so build it as a monitor.
 
@@ -59,9 +59,34 @@ The only running cost is Claude usage for sorting jobs and drafting messages.
 Answered September 2026:
 
 1. **Scope:** jobs based in Romania plus remote EU roles at Romanian companies. Romanian-based roles at foreign companies are out for now.
-2. **Report destination:** a Google Sheet. It keeps history and lets the user track status for each job (new, applied, messaged).
+2. **Report destination:** a GitHub Issue each week listing new openings (GitHub emails you), plus `jobs.md` with the full history. Optionally, new openings are also added to a Google Sheet through a small Apps Script, which is free and needs no Google Cloud project.
 3. **Frequency:** both. A weekly scheduled run that flags only new openings, plus a manual trigger for checking sooner.
-4. **Seniority:** mid, senior and lead. The report should show each job's seniority so it can be filtered or sorted.
+4. **Seniority:** mid, senior and lead. Each job's seniority is shown so the list can be filtered. Pick a main level before writing outreach templates.
+5. **Cost:** it must stay free or close to it. Keyword matching is free and runs first. Claude only reads the few jobs that look like design roles, at about $0.05–0.50 a week. With no API key set, the tool runs on keywords only at $0. GitHub Actions is free for this workload, even in a private repo.
+6. **Stack:** TypeScript, run weekly by GitHub Actions, in its own repository.
+
+## How it works
+
+1. `companies.json` lists each company and its careers source: an ATS name and board slug, or a careers page URL (`"ats": "html"`). `npm run detect` fills these in by visiting each company's website.
+2. `npm start` fetches every company's jobs, keeps titles that look like design roles (`src/keywords.ts`), and skips any job it has already checked (`data/seen.json`).
+3. If `ANTHROPIC_API_KEY` is set, Claude reads each new candidate and decides whether it's really a design role, its seniority and location, and writes a short summary (`src/classify.ts`). If not, the keyword guess is used.
+4. Jobs that are mid level or above and in Romania or remote from the EU go into `jobs.md` and `out/new-jobs.md`. The workflow opens a GitHub Issue from the second file, with a checkbox for each job.
+5. Problems (a company whose feed failed, or a careers page with no job links) are listed at the bottom of the Issue, so the list doesn't quietly go stale.
+
+## Setup
+
+1. **Create the repo.** On GitHub, create a private repository called `job-search-agent`. Copy this folder's contents into it (including `.github/`), then commit and push.
+2. **Fill in the companies.** Add companies to `companies.json` (name, website, LinkedIn page), then run `npm install` and `npm run detect`. Check the careers entries it adds, and fill in any it couldn't find.
+3. **Test locally (optional).** `npm run dry-run` shows what it would report without saving anything.
+4. **Turn on Claude (optional).** Create an API key at console.anthropic.com, add a few dollars of credit and set a low monthly spend limit. In the GitHub repo, go to Settings → Secrets and variables → Actions and add it as `ANTHROPIC_API_KEY`.
+5. **Add the Google Sheet (optional).**
+   1. Create a Sheet, then open Extensions → Apps Script.
+   2. Paste in `apps-script/Code.gs` and change `TOKEN` to a long random string.
+   3. Click Deploy → New deployment → Web app, with "Execute as: Me" and "Who has access: Anyone". Approve the permission prompt.
+   4. Add the web app URL as the secret `SHEET_WEBHOOK_URL` and the token as `SHEET_WEBHOOK_TOKEN`. "Anyone" only means anyone who has the URL. The token stops anyone else from adding rows.
+6. **First run.** In the repo's Actions tab, open "Weekly job search" and click "Run workflow". The first run reports every current opening. After that, runs only report new ones.
+
+To catch a design role the keywords missed, add its title pattern to `DESIGN_TITLE` in `src/keywords.ts`.
 
 ## Sources
 
