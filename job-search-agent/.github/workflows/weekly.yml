@@ -1,0 +1,54 @@
+# Runs every Monday morning, and whenever you press "Run workflow" on the
+# Actions tab. Posts new openings as a GitHub Issue (which emails you) and
+# commits the updated jobs.md and data/seen.json.
+name: Weekly job search
+
+on:
+  schedule:
+    - cron: "47 5 * * 1" # Mondays 05:47 UTC, 08:47 in Romania in summer
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: job-search
+  cancel-in-progress: false
+
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Find new openings
+        run: npm start
+        env:
+          # Optional. Without it the run uses keyword matching only, at no cost.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Optional. Also adds new openings to your Google Sheet (see README).
+          SHEET_WEBHOOK_URL: ${{ secrets.SHEET_WEBHOOK_URL }}
+          SHEET_WEBHOOK_TOKEN: ${{ secrets.SHEET_WEBHOOK_TOKEN }}
+
+      - name: Open an Issue for new openings
+        if: hashFiles('out/new-jobs.md') != ''
+        run: gh issue create --title "Design openings, week of $(date -u +%Y-%m-%d)" --body-file out/new-jobs.md
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Save the report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add jobs.md data/seen.json
+          git diff --cached --quiet || git commit -m "Weekly job search $(date -u +%Y-%m-%d)"
+          git push
